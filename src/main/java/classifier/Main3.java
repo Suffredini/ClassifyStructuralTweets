@@ -196,7 +196,14 @@ public class Main3 {
 
         LibSVM svm;
         ExportedClassifierData ecd = new ExportedClassifierData();
-        String[] keyWord = {"fogne", "fognature", "tubazioni"};
+        String[] keyWord = 
+                {
+                    "fogna","fogne","fognatura","fognaria","allagato","allagata",
+                    "allagamento","alluvione","alluvionato","diluvio","diluviare",
+                    "diluviando","caditoia","caditoie","tubatura","tubature","sommersa",
+                    "sommerse","tombino","tombini","scolo","scoli","allerta meteo",
+                    "piove","pioggia","maltempo"
+                };
         ecd.researchKey = keyWord;
         
         //int folds = 5;

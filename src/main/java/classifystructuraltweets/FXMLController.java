@@ -23,6 +23,7 @@ import javafx.event.ActionEvent;
 import javafx.event.Event;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
@@ -57,6 +58,7 @@ public class FXMLController implements Initializable {
     @FXML private TextArea textAreaTweet;
     @FXML private ComboBox comboClassifier;
     @FXML private DatePicker datePickerFrom, datePickerTo;
+    @FXML public Button buttonSearch;
     
     private ExportedClassifierData ecd; 
     
@@ -75,6 +77,11 @@ public class FXMLController implements Initializable {
         System.out.println(datePickerFrom.getValue().toString());
         System.out.println(datePickerTo.getValue().toString());
         System.out.println(position);  
+       
+
+        buttonSearch.setText("Downloading tweets...");
+        buttonSearch.setDisable(true);
+ 
         
         Platform.runLater(new Runnable(){
             @Override
@@ -88,8 +95,8 @@ public class FXMLController implements Initializable {
                     ex.printStackTrace();
                 }
                 
-                //TODO non mette setVisible a true, funziona con il false sotto
-                waitingLabel.setVisible(true);
+
+                
                 tweets = TweetsImport.getTweets(ecd.researchKey, datePickerFrom.getValue().toString(), datePickerTo.getValue().toString(), position);  
                 
                 try {
@@ -99,19 +106,20 @@ public class FXMLController implements Initializable {
                     ex.printStackTrace();
                 }
                       
-                // Inserisco i tweet nwlla tabella
+                // Inserisco i tweet nella tabella
                 tweetsOl.clear();
                 for(String[] tweet:tweets){
                     tweetsOl.add(new TweetsTableView(tweet[0],tweet[1],tweet[2],tweet[3]));
                 }
                 tableTweets.setItems(tweetsOl);  
-                waitingLabel.setVisible(false);                
+                
+                buttonSearch.setText("SEARCH");
+                buttonSearch.setDisable(false);            
             }
         });
         
     }
     
-    //prima capire come classificare e come fare match tra quelli classificati e gli originali
     private void classifyAndRemove() throws Exception{
         String[] unlabeledTweets = new String[tweets.size()];
         
@@ -172,15 +180,10 @@ public class FXMLController implements Initializable {
         filter.setLowerCaseTokens(true);
         filter.setDoNotOperateOnPerClassBasis(true);
         filter.setIDFTransform(true); //Inverse document frequency
-        filter.setTFTransform(true);  // term frequency
-        
-        /*WordsFromFile stopwords = new WordsFromFile();
-        stopwords.setStopwords(new File("file/stopWord"));*/
-        
+        filter.setTFTransform(true);  // term frequency            
         filter.setStopwordsHandler(stopwords); //external stop words file
 
-        //for stemming the data	
-        			
+        //for stemming the data	        			
         String[] stemOptions = {"-S", "italian"};
         SnowballStemmer stemmer = new SnowballStemmer();
         stemmer.setOptions(stemOptions);
@@ -209,75 +212,65 @@ public class FXMLController implements Initializable {
         
         //Creo istanza di Instances vuota alla quale passo la lista degli attributi
         Instances toClassifyInstances = new Instances("toClassify",attributes,0);
-        int attributeNumber = attributes.size();  
-        Attribute toReplaceAttribute = data.classAttribute();
-        int toReplaceIndex;
+        int attributeNumber = attributes.size();  // # attributi finali
+        
         double igValue;
-        Instance inst ;
-        double[] attributeValueToReplace;
+        Instance newInstance;
+        double attributeValue ; 
+        Attribute attribute;
+        
+        //Attribute toReplaceAttribute = data.classAttribute();
+       
         for(int instance = 0; instance<data.numInstances(); instance++){            
-            inst = new DenseInstance(attributeNumber);
-            attributeValueToReplace = data.get(instance).toDoubleArray();
-            
+            newInstance = new DenseInstance(attributeNumber);
+                 
             for(int attr = 0; attr<attributeNumber; attr++){
-                //verifico se attributo per classificatore è presente in quelli da rimpiazzare, cerco indice di corrispondenza dell'attributo
-                toReplaceIndex = toReplaceAttribute.indexOfValue(toClassifyInstances.attribute(attr).name());
+                if(attr==attributeNumber-1){
+                    // per classLabel aggiungo un valore random perchè in data non è presente e ritornerebbe null (tanto la setta il classificatore)
+                    newInstance.setValue(attr, 0.0);
+                    break;
+                }          
                 
-                if(toReplaceIndex >= 0 && attributeValueToReplace[toReplaceIndex] != 0){
-                    igValue = ecd.attributes.get(attributes.get(attr).name()); //TODO testare                     
+                //verifico se attributo per classificatore è presente in quelli da rimpiazzare, cerco indice di corrispondenza dell'attributo
+                attribute = attributes.get(attr);
+                attributeValue = data.get(instance).value(attribute);
+                if(attributeValue != 0.0){
+                    //System.out.println(attr+"/"+attributeNumber+" --- "+attribute.name());
+                    igValue = ecd.attributes.get(attribute.name()); //TODO testare      da null pointer               
                 } else {
                     igValue = 0.0;
                 }
                 //System.out.println(igValue);
-                inst.setValue(attr, igValue);
+                newInstance.setValue(attr, igValue);
             }
             // Inserisco l'istanza creata al dataset da classificare preservandone l'ordinamento
-            toClassifyInstances.add(instance,inst);
+            toClassifyInstances.add(instance,newInstance);
         }
-        //Posso classificare qua
-        
-        
-        
-//TODO NON CAMBIA NIENTE CON QUESTO, DA SEMPRE 1, classifyinstance ritorna solo double però (quando classifico sotto)
-    /*NumericToNominal convert= new NumericToNominal();
-        String[] options= new String[2];
-        options[0]="-R";
-        options[1]="last";  //range of variables to make numeric
-    
-        convert.setOptions(options);
-        convert.setInputFormat(toClassifyInstances);
-        
-        
-        
-        // create copy and set last attribute nominal
-        Instances labeled =Filter.useFilter(toClassifyInstances, convert);   
-        labeled.setClass(toClassifyInstances.attribute("classLabel"));
-    */
-        
-    
+     
         toClassifyInstances.setClass(toClassifyInstances.attribute("classLabel"));
         Instances labeled = new Instances(toClassifyInstances);   
-        System.out.println("PRE ---> "+labeled.numInstances());
+        System.out.println("Totale tweet analizzati ---> "+labeled.numInstances());
          
          
-
         // label instances
         for (int i = 0; i < toClassifyInstances.numInstances(); i++) {
            double clsLabel = ecd.classifier.classifyInstance(toClassifyInstances.instance(i));
+            //System.out.println("$$$ "+clsLabel);
            labeled.instance(i).setClassValue(clsLabel);
         }
-        System.out.println("POST ---> "+labeled.numInstances());
-        //Adesso elimino quelli che non c'entrano niente dal dataset dda mostrare
-        
-        ArrayList<String[]> tweetsToShow = new ArrayList<>();
-        Attribute classAttribute ;
-        for(int i=0; i<tweets.size(); i++){
-            classAttribute = labeled.get(i).classAttribute(); 
-            System.out.println((String)classAttribute.value(i));
 
-            if(((String)classAttribute.value(i)).equals("S")) // TODO capire se 1 o 0
+        //Adesso elimino quelli che non c'entrano niente dal dataset dda mostrare        
+        ArrayList<String[]> tweetsToShow = new ArrayList<>();
+        double[] instancesClass = labeled.attributeToDoubleArray(labeled.numAttributes()-1);
+        for(int i=0; i<tweets.size(); i++){
+            if(instancesClass[i] == 0.0){ // 0.0 Strutturali, 1.0 Non Strutturali
                 tweetsToShow.add(tweets.get(i));
+               
+            }
         }
+        System.out.println("Totale tweet classificati strutturali ---> "+tweetsToShow.size());
+        waitingLabel.setVisible(true);
+        waitingLabel.setText("Selected "+tweetsToShow.size()+ " out of "+ labeled.numInstances() + " tweets downloaded");
         tweets = tweetsToShow;
     }
     

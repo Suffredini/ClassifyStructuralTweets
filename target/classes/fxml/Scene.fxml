@@ -25,7 +25,7 @@
         </columns>
       </TableView>
       <ComboBox fx:id="comboClassifier" layoutX="577.0" layoutY="161.0" prefHeight="31.0" prefWidth="237.0" />
-      <Button fx:id="buttonSearch" layoutX="878.0" layoutY="134.0" mnemonicParsing="false" onAction="#onActionButtonSearch" prefHeight="56.0" prefWidth="341.0" text="SEARCH" />
+      <Button fx:id="buttonSearch" layoutX="836.0" layoutY="134.0" mnemonicParsing="false" onAction="#onActionButtonSearch" prefHeight="56.0" prefWidth="383.0" text="SEARCH" />
       <Label layoutX="408.0" layoutY="162.0" text="Select classifier">
          <font>
             <Font size="22.0" />
@@ -52,14 +52,14 @@
                   <Font size="22.0" />
                </font>
             </Label>
-            <DatePicker fx:id="datePickerFrom" layoutX="1001.0" layoutY="41.0" promptText="dateFrom" />
-            <DatePicker fx:id="datePickerTo" layoutX="1001.0" layoutY="84.0" promptText="dateTo" />
-            <Label layoutX="877.0" layoutY="41.0" text="From Date">
+            <DatePicker fx:id="datePickerFrom" layoutX="975.0" layoutY="41.0" prefHeight="31.0" prefWidth="244.0" promptText="dateFrom" />
+            <DatePicker fx:id="datePickerTo" layoutX="975.0" layoutY="84.0" prefHeight="31.0" prefWidth="244.0" promptText="dateTo" />
+            <Label layoutX="851.0" layoutY="41.0" text="From Date">
                <font>
                   <Font size="22.0" />
                </font>
             </Label>
-            <Label layoutX="902.0" layoutY="84.0" text="To Date">
+            <Label layoutX="876.0" layoutY="83.0" text="To Date">
                <font>
                   <Font size="22.0" />
                </font>
@@ -69,7 +69,7 @@
                   <Image url="@../../../../../../../Desktop/1478699.jpg" />
                </image>
             </ImageView>
-            <Label fx:id="waitingLabel" layoutX="843.0" layoutY="194.0" text="Waiting for tweets download and classificaion..." textFill="#f50707" visible="false">
+            <Label fx:id="waitingLabel" layoutX="843.0" layoutY="194.0" text="Waiting for tweets download and classificaion..." textFill="#0752f5" visible="false">
                <font>
                   <Font size="18.0" />
                </font>

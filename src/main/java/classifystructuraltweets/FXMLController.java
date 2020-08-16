@@ -43,6 +43,7 @@ import weka.core.stopwords.StopwordsHandler;
 import weka.core.tokenizers.WordTokenizer;
 import weka.filters.Filter;
 import weka.filters.unsupervised.attribute.NominalToString;
+import weka.filters.unsupervised.attribute.NumericToNominal;
 import weka.filters.unsupervised.attribute.StringToWordVector;
 
 public class FXMLController implements Initializable {
@@ -234,32 +235,47 @@ public class FXMLController implements Initializable {
             toClassifyInstances.add(instance,inst);
         }
         //Posso classificare qua
+        
+        
+        
+//TODO NON CAMBIA NIENTE CON QUESTO, DA SEMPRE 1, classifyinstance ritorna solo double però (quando classifico sotto)
+    /*NumericToNominal convert= new NumericToNominal();
+        String[] options= new String[2];
+        options[0]="-R";
+        options[1]="last";  //range of variables to make numeric
+    
+        convert.setOptions(options);
+        convert.setInputFormat(toClassifyInstances);
+        
+        
+        
+        // create copy and set last attribute nominal
+        Instances labeled =Filter.useFilter(toClassifyInstances, convert);   
+        labeled.setClass(toClassifyInstances.attribute("classLabel"));
+    */
+        
+    
+        toClassifyInstances.setClass(toClassifyInstances.attribute("classLabel"));
+        Instances labeled = new Instances(toClassifyInstances);   
+        System.out.println("PRE ---> "+labeled.numInstances());
          
-         // create copy
-         toClassifyInstances.setClass(toClassifyInstances.attribute("classLabel"));
-         Instances labeled = new Instances(toClassifyInstances);
+         
 
         // label instances
         for (int i = 0; i < toClassifyInstances.numInstances(); i++) {
            double clsLabel = ecd.classifier.classifyInstance(toClassifyInstances.instance(i));
            labeled.instance(i).setClassValue(clsLabel);
         }
-        
+        System.out.println("POST ---> "+labeled.numInstances());
         //Adesso elimino quelli che non c'entrano niente dal dataset dda mostrare
         
-        if(labeled.numInstances() == tweets.size())
-            System.out.println("DIMENSIONE TORNA");
-        else{
-            System.out.println("DIMENSIONE ERRATA");
-            System.exit(1);
-        }
         ArrayList<String[]> tweetsToShow = new ArrayList<>();
         Attribute classAttribute ;
-        double[] instancesClass = labeled.attributeToDoubleArray(labeled.numAttributes()-1);
         for(int i=0; i<tweets.size(); i++){
             classAttribute = labeled.get(i).classAttribute(); 
-            System.out.println(instancesClass[i]);
-            if(instancesClass[i] == 0.0) // TODO capire se 1 o 0
+            System.out.println((String)classAttribute.value(i));
+
+            if(((String)classAttribute.value(i)).equals("S")) // TODO capire se 1 o 0
                 tweetsToShow.add(tweets.get(i));
         }
         tweets = tweetsToShow;

@@ -118,7 +118,7 @@ public class Main3 {
         for(int pos = 0; pos<numberTweets; pos++){
             tmp = new String[2];
             tmp[0] = "'"+tweets[pos]+"'";
-            tmp[1] = classes[pos];
+            tmp[1] = classes[pos];            
             out.add(tmp);
         }
       

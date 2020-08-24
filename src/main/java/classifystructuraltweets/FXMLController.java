@@ -99,6 +99,23 @@ public class FXMLController implements Initializable {
                 
                 tweets = TweetsImport.getTweets(ecd.researchKey, datePickerFrom.getValue().toString(), datePickerTo.getValue().toString(), position);  
                 
+                // Rimuovo i tweet duplicati
+                List<String[]> temp = new ArrayList<>();
+                boolean insert = true;
+                for(String[] s : tweets){
+                    for(String[] sTemp: temp){
+                       if(s[0].equals(sTemp[0])){ 
+                           insert = false;
+                           break;
+                       }
+                    }
+                    if(insert){
+                        temp.add(s);
+                    }
+                }
+                
+                tweets = temp;
+                
                 try {
                     //Classifico i tweet e rimuovo quelli inutili
                     classifyAndRemove();
@@ -111,7 +128,9 @@ public class FXMLController implements Initializable {
                 for(String[] tweet:tweets){
                     tweetsOl.add(new TweetsTableView(tweet[0],tweet[1],tweet[2],tweet[3]));
                 }
+                                
                 tableTweets.setItems(tweetsOl);  
+                textAreaTweet.clear();
                 
                 buttonSearch.setText("SEARCH");
                 buttonSearch.setDisable(false);            
@@ -250,12 +269,12 @@ public class FXMLController implements Initializable {
         toClassifyInstances.setClass(toClassifyInstances.attribute("classLabel"));
         Instances labeled = new Instances(toClassifyInstances);   
         System.out.println("Totale tweet analizzati ---> "+labeled.numInstances());
-         
-         
-        // label instances
+        
+        
+// label instances
+        double clsLabel;
         for (int i = 0; i < toClassifyInstances.numInstances(); i++) {
-           double clsLabel = ecd.classifier.classifyInstance(toClassifyInstances.instance(i));
-            //System.out.println("$$$ "+clsLabel);
+           clsLabel = ecd.classifier.classifyInstance(toClassifyInstances.instance(i));
            labeled.instance(i).setClassValue(clsLabel);
         }
 
@@ -263,6 +282,7 @@ public class FXMLController implements Initializable {
         ArrayList<String[]> tweetsToShow = new ArrayList<>();
         double[] instancesClass = labeled.attributeToDoubleArray(labeled.numAttributes()-1);
         for(int i=0; i<tweets.size(); i++){
+            
             if(instancesClass[i] == 0.0){ // 0.0 Strutturali, 1.0 Non Strutturali
                 tweetsToShow.add(tweets.get(i));
                

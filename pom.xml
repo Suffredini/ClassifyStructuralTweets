@@ -60,20 +60,21 @@
             <version>1.0.10</version>
             <type>jar</type>
         </dependency>
+        
         <dependency>
             <groupId>nz.ac.waikato.cms.weka</groupId>
             <artifactId>SMOTE</artifactId>
             <version>1.0.3</version>
         </dependency>
+        
         <dependency>
-            <groupId>com.github.rholder</groupId>
-            <artifactId>snowball-stemmer</artifactId>
-            <version>1.3.0.581.1</version>
+            <groupId>org.tartarus</groupId>
+            <artifactId>snowball</artifactId>
+            <scope>system</scope>
+            <version>1000.0</version>
+            <systemPath>${pom.basedir}/libs/snowball-20051019.jar</systemPath>
         </dependency>
 
-        
-        
-        
     </dependencies>
 
 

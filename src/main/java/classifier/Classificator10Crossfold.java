@@ -33,7 +33,7 @@ import weka.filters.unsupervised.attribute.NominalToString;
 import weka.filters.unsupervised.attribute.StringToWordVector;
 
 
-public class ClassificatorHoldout {
+public class Classificator10Crossfold {
     /* START Parameter */
     private static final String rowTweetsCSV = "file/tweets_ripuliti.csv";//"file/tweetsVirgola.csv"; //formato file: tweet,classe
     private static final String stopWordFile = "file/stopWord";    
@@ -58,12 +58,15 @@ public class ClassificatorHoldout {
     /* END Da esportare assieme al classificatore per il preprocessing */
     
     private static Instances trainSet, testSet, data;
-    
-    /* Vecchia roba */
     private static int numberTweets;
     private static String[] tweets;
     private static String[] classes;
-   
+    private static double[] accuracyFold;
+    private static double[] fscoreFold;
+    private static double[] AUCFold;
+    private static String[] matrixFold;
+    private static Classifier[] classifierFold;
+    private static String classifierName = "";
 
     
     public static void main(String[] args) throws IOException, Exception {
@@ -71,16 +74,29 @@ public class ClassificatorHoldout {
         
         // Importo i tweet             
         importTweets(rowTweetsCSV);
+        
+        accuracyFold = new double[10];
+        fscoreFold = new double[10];
+        AUCFold = new double[10];
+        matrixFold = new String[10];
+        classifierFold = new Classifier[10];
+        
+        // Ripeto per le 10 fold dalvandomi i risultati ad ogni istanza
+        for(int fold=1; fold<=10; fold++){
+            // Ottengo test set e training set
+            splitDataset(fold); 
 
-        // Ottengo test set e training set
-        splitDataset(); 
+            // Bilancio il train set
+            trainSet = classInstancesBalancing(trainSet);        
+
+            // Uso un classificatore
+            textClassification(fold-1);
+        }  
         
-        // Bilancio il train set
-        trainSet = classInstancesBalancing(trainSet);        
-        
-        // Uso un classificatore
-        textClassification();
-                
+        System.out.println("\nClassificator: " + classifierName);
+        printResultIndex();
+        chooseBestClassifier();
+
         System.out.println("Classifier [END]");
     }
     
@@ -134,13 +150,13 @@ public class ClassificatorHoldout {
         data.setClassIndex(data.numAttributes() - 1); 
     }
     
-    private static void splitDataset() throws Exception {
+    private static void splitDataset(int fold) throws Exception {
         /* Faccio stratified in modo da mantenera la distribuzione, divido in 5 folds
            cosi 3 fanno parte del train (75%) e 1 fa parte del test (25%)
         */
         // Estraggo train set
         StratifiedRemoveFolds strRmvFoldsTrain = new StratifiedRemoveFolds();
-        String optionsSRFTrain = ( "-S 0 -N 4 -F 1 -V");
+        String optionsSRFTrain = ( "-S 0 -N 10 -F "+fold+" -V");
         String[] optionsArrayTrain = optionsSRFTrain.split( " " );
         strRmvFoldsTrain.setOptions(optionsArrayTrain);
         strRmvFoldsTrain.setInputFormat(data);
@@ -148,7 +164,7 @@ public class ClassificatorHoldout {
 
         // Estraggo test set
         StratifiedRemoveFolds strRmvFoldsTest = new StratifiedRemoveFolds();
-        String optionsSRFTest = ( "-S 0 -N 4 -F 1");
+        String optionsSRFTest = ( "-S 0 -N 10 -F "+fold);
         String[] optionsArrayTest = optionsSRFTest.split( " " );
         strRmvFoldsTest.setOptions(optionsArrayTest);
         strRmvFoldsTest.setInputFormat(data);
@@ -197,7 +213,7 @@ public class ClassificatorHoldout {
         return as;
     }
 
-    private static void textClassification() throws Exception {
+    private static void textClassification(int fold) throws Exception {
         FilteredClassifier classifier = new FilteredClassifier();
         //MultiFilter mf = new MultiFilter();
         //mf.setFilters(new Filter[] { getTextElaborationFilter(), getAttributeSelectionFilter()});
@@ -211,37 +227,36 @@ public class ClassificatorHoldout {
         classifier.setFilter(mf);
         
         Classifier classifierSelected = null;
-        String classifierName = "";
-        
+
         switch(selectedClassifier){
             case 0:                
                 classifierSelected = doDecisionTree();
-                classifierName = "DecisionTree(HOLD)";
+                classifierName = "DecisionTree(10CV)";
                 break;
                 
             case 1:                
                 classifierSelected = doSVM();
-                classifierName = "SVM(HOLD)";
+                classifierName = "SVM(10CV)";
                 break;
                 
             case 2:                
                 classifierSelected = doMultinomialNB();
-                classifierName = "MultinomialNB(HOLD)";
+                classifierName = "MultinomialNB(10CV)";
                 break;
                 
             case 3:                
                 classifierSelected = dokNN();
-                classifierName = "kNN(HOLD)";
+                classifierName = "kNN(10CV)";
                 break;
                 
             case 4:                
                 classifierSelected = doAdaboost();
-                classifierName = "Adaboost(HOLD)";
+                classifierName = "Adaboost(10CV)";
                 break;
                 
             case 5:                
                 classifierSelected = doRandomForest();
-                classifierName = "RandomForest(HOLD)";
+                classifierName = "RandomForest(10CV)";
                 break;
                 
             default:
@@ -256,9 +271,7 @@ public class ClassificatorHoldout {
         Evaluation eval = new Evaluation(trainSet);
         eval.evaluateModel(classifier, testSet);
         
-        System.out.println("\nClassificator: " + classifierName);
-        
-        printIndex(eval);
+        saveFoldResult(fold,eval,classifier);
         
         // TODO non posso esportarlo perchè Snowball Stemmer non è serializzabile
         //exportClassifier(classifier, classifierName);
@@ -275,16 +288,16 @@ public class ClassificatorHoldout {
         double recall = eval.recall(1);
         double auc = eval.areaUnderROC(1);
         String confusionMatrix = eval.toMatrixString();
-        DecimalFormat df = new DecimalFormat("#.##");
-        String index =  "\t Accuracy: " + df.format(acc) +
+        
+        String index =  "\t| Accuracy: " + acc +
                         "\n" +
-                        "\t Precision: " + df.format(precision*100) +
+                        "\t| Precision: " + precision*100 +
                         "\n" +
-                        "\t F-Score: " + df.format(fscore*100) +
+                        "\t| F-Score: " + fscore*100 +
                         "\n" +
-                        "\t Recall: " + df.format(recall*100) +
+                        "\t| Recall: " + recall*100 +
                         "\n" +
-                        "\t AUC: " + df.format(auc*100) +
+                        "\t| AUC: " + auc*100 +
                         "\n";
         
         System.out.println(index);
@@ -357,6 +370,59 @@ public class ClassificatorHoldout {
         cd.researchKey = keyWord; 
         //weka.core.SerializationHelper.write("classifier/"+name+".classifier", c); // Nemmeno con questo lo esporta
         IOManager.saveClassBinary("classifier/"+name+".classifier", cd);
+    }
+
+    private static void saveFoldResult(int fold, Evaluation eval, FilteredClassifier classifier) throws Exception {
+        double fscore = eval.fMeasure(1);
+        if(Double.isNaN(fscore)){
+            // Con Recall e precision == 0.0 da nan quindi va settato
+            fscore = 0.0;
+        }
+        accuracyFold[fold] = eval.pctCorrect();
+        fscoreFold[fold] = fscore*100;
+        AUCFold[fold] =  eval.areaUnderROC(1)*100;
+        matrixFold[fold] =  eval.toMatrixString();
+        classifierFold[fold] =classifier;
+    }
+    
+    private static String printStringVector(double[] values) {
+        DecimalFormat df = new DecimalFormat("#.##");
+        String ret = "[  ";
+        for(double val : values){
+            ret += df.format(val) + "  "; 
+        }
+        return ret + "]";
+    }
+    
+    private static double average(double[] n) {
+        double sum = 0;
+        for(double value:n){
+            sum+=value;
+        }
+        return sum/n.length;
+    }
+    
+    private static String confidanceInterval(double[] values) {
+        double average = average(values);
+        double varianceSum = 0.0;
+        for (int i = 0; i < values.length; i++) {
+            varianceSum += (values[i] - average) * (values[i] - average);
+        }
+        double variance = varianceSum / (values.length - 1);
+        double standardDaviation= Math.sqrt(variance);
+        DecimalFormat df = new DecimalFormat("#.##");
+        return df.format(average) + " +- " + df.format(1.96 * standardDaviation);
+    }
+
+    private static void printResultIndex() {
+        System.out.println("Accuracy: \n\t" + confidanceInterval(accuracyFold)+ " \t "  + printStringVector(accuracyFold));
+        System.out.println("F-Score: \n\t" + confidanceInterval(fscoreFold)+ " \t"  + printStringVector(fscoreFold));
+        System.out.println("AUC: \n\t" + confidanceInterval(AUCFold)+ " \t"  + printStringVector(AUCFold));
+        System.out.println("\n");
+    }
+
+    private static void chooseBestClassifier() {
+        System.out.println("TODO scelta miglior classificatore ed esportazione");
     }
 
 }

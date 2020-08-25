@@ -20,7 +20,6 @@ import weka.classifiers.meta.FilteredClassifier;
 import weka.classifiers.trees.J48;
 import weka.classifiers.trees.RandomForest;
 import weka.core.Instances;
-import org.tartarus.snowball.SnowballProgram;
 import weka.core.stemmers.SnowballStemmer;
 import weka.core.stopwords.StopwordsHandler;
 import weka.core.tokenizers.WordTokenizer;
@@ -33,18 +32,19 @@ import weka.filters.unsupervised.attribute.NominalToString;
 import weka.filters.unsupervised.attribute.StringToWordVector;
 
 
-public class ClassificatorHoldout {
+public class Classificator10Holdout {
     /* START Parameter */
     private static final String rowTweetsCSV = "file/tweets_ripuliti.csv";//"file/tweetsVirgola.csv"; //formato file: tweet,classe
     private static final String stopWordFile = "file/stopWord";    
     
-    private static int selectedClassifier = 0;  /*  (0) DecisionTree 
+    private static int selectedClassifier = 5;  /*  (0) DecisionTree 
                                                     (1) SVM 
                                                     (2) MultinomialNB 
                                                     (3) kNN 
                                                     (4) Adaboost 
                                                     (5) RandomForest
                                                 */
+    private static final int numberSeed = 30;
     /* END Parameter */
     
     /* START Da esportare assieme al classificatore per il preprocessing */
@@ -58,12 +58,16 @@ public class ClassificatorHoldout {
     /* END Da esportare assieme al classificatore per il preprocessing */
     
     private static Instances trainSet, testSet, data;
-    
-    /* Vecchia roba */
     private static int numberTweets;
     private static String[] tweets;
     private static String[] classes;
-   
+    private static double[] accuracyFold;
+    private static double[] fscoreFold;
+    private static double[] AUCFold;
+    private static String[] matrixFold;
+    private static Evaluation[] evalFold;
+    private static Classifier[] classifierFold;
+    private static String classifierName = "";
 
     
     public static void main(String[] args) throws IOException, Exception {
@@ -71,16 +75,31 @@ public class ClassificatorHoldout {
         
         // Importo i tweet             
         importTweets(rowTweetsCSV);
+        
+        accuracyFold = new double[numberSeed];
+        fscoreFold = new double[numberSeed];
+        AUCFold = new double[numberSeed];
+        matrixFold = new String[numberSeed];
+        evalFold = new Evaluation[numberSeed];
+        classifierFold = new Classifier[numberSeed];
+        
+        for(int seed=0; seed<numberSeed; seed++){
+            // Ottengo test set e training set
+            splitDataset(seed); 
 
-        // Ottengo test set e training set
-        splitDataset(); 
+            // Bilancio il train set
+            trainSet = classInstancesBalancing(trainSet);        
+
+            // Uso un classificatore
+            textClassification(seed);
+        }
+
         
-        // Bilancio il train set
-        trainSet = classInstancesBalancing(trainSet);        
-        
-        // Uso un classificatore
-        textClassification();
-                
+          
+        System.out.println("\nClassificator: " + classifierName);
+        printResultIndex();
+        printAndSerializeBestClassifier();
+
         System.out.println("Classifier [END]");
     }
     
@@ -134,13 +153,10 @@ public class ClassificatorHoldout {
         data.setClassIndex(data.numAttributes() - 1); 
     }
     
-    private static void splitDataset() throws Exception {
-        /* Faccio stratified in modo da mantenera la distribuzione, divido in 5 folds
-           cosi 3 fanno parte del train (75%) e 1 fa parte del test (25%)
-        */
+    private static void splitDataset(int seed) throws Exception {
         // Estraggo train set
         StratifiedRemoveFolds strRmvFoldsTrain = new StratifiedRemoveFolds();
-        String optionsSRFTrain = ( "-S 0 -N 4 -F 1 -V");
+        String optionsSRFTrain = ( "-S "+seed+" -N 4 -F 1 -V");
         String[] optionsArrayTrain = optionsSRFTrain.split( " " );
         strRmvFoldsTrain.setOptions(optionsArrayTrain);
         strRmvFoldsTrain.setInputFormat(data);
@@ -148,7 +164,7 @@ public class ClassificatorHoldout {
 
         // Estraggo test set
         StratifiedRemoveFolds strRmvFoldsTest = new StratifiedRemoveFolds();
-        String optionsSRFTest = ( "-S 0 -N 4 -F 1");
+        String optionsSRFTest = ( "-S "+seed+" -N 4 -F 1");
         String[] optionsArrayTest = optionsSRFTest.split( " " );
         strRmvFoldsTest.setOptions(optionsArrayTest);
         strRmvFoldsTest.setInputFormat(data);
@@ -197,11 +213,8 @@ public class ClassificatorHoldout {
         return as;
     }
 
-    private static void textClassification() throws Exception {
+    private static void textClassification(int index) throws Exception {
         FilteredClassifier classifier = new FilteredClassifier();
-        //MultiFilter mf = new MultiFilter();
-        //mf.setFilters(new Filter[] { getTextElaborationFilter(), getAttributeSelectionFilter()});
-        
         MultiFilter mf = new MultiFilter();
         Filter[] filters = new Filter[2];
         filters[0] = getTextElaborationFilter();
@@ -211,8 +224,7 @@ public class ClassificatorHoldout {
         classifier.setFilter(mf);
         
         Classifier classifierSelected = null;
-        String classifierName = "";
-        
+
         switch(selectedClassifier){
             case 0:                
                 classifierSelected = doDecisionTree();
@@ -256,12 +268,7 @@ public class ClassificatorHoldout {
         Evaluation eval = new Evaluation(trainSet);
         eval.evaluateModel(classifier, testSet);
         
-        System.out.println("\nClassificator: " + classifierName);
-        
-        printIndex(eval);
-        
-        // TODO non posso esportarlo perchè Snowball Stemmer non è serializzabile
-        //exportClassifier(classifier, classifierName);
+        saveFoldResult(index,eval,classifier);
     }
     
     private static void printIndex(Evaluation eval) throws Exception{
@@ -275,19 +282,19 @@ public class ClassificatorHoldout {
         double recall = eval.recall(1);
         double auc = eval.areaUnderROC(1);
         String confusionMatrix = eval.toMatrixString();
-        DecimalFormat df = new DecimalFormat("#.##");
-        String index =  "\t Accuracy: " + df.format(acc) +
+        
+        String indexValue =  "\t| Accuracy: " + acc +
                         "\n" +
-                        "\t Precision: " + df.format(precision*100) +
+                        "\t| Precision: " + precision*100 +
                         "\n" +
-                        "\t F-Score: " + df.format(fscore*100) +
+                        "\t| F-Score: " + fscore*100 +
                         "\n" +
-                        "\t Recall: " + df.format(recall*100) +
+                        "\t| Recall: " + recall*100 +
                         "\n" +
-                        "\t AUC: " + df.format(auc*100) +
+                        "\t| AUC: " + auc*100 +
                         "\n";
         
-        System.out.println(index);
+        System.out.println(indexValue);
         System.out.println(confusionMatrix); 
     }
   
@@ -357,6 +364,76 @@ public class ClassificatorHoldout {
         cd.researchKey = keyWord; 
         //weka.core.SerializationHelper.write("classifier/"+name+".classifier", c); // Nemmeno con questo lo esporta
         IOManager.saveClassBinary("classifier/"+name+".classifier", cd);
+    }
+
+    private static void saveFoldResult(int index, Evaluation eval, FilteredClassifier classifier) throws Exception {
+        double fscore = eval.fMeasure(1);
+        if(Double.isNaN(fscore)){
+            // Con Recall e precision == 0.0 da nan quindi va settato
+            fscore = 0.0;
+        }
+        accuracyFold[index] = eval.pctCorrect();
+        fscoreFold[index] = fscore*100;
+        AUCFold[index] =  eval.areaUnderROC(1)*100;
+        matrixFold[index] =  eval.toMatrixString();
+        evalFold[index] = eval;
+        classifierFold[index] =classifier;
+    }
+    
+    private static String printStringVector(double[] values) {
+        DecimalFormat df = new DecimalFormat("#.##");
+        String ret = "[  ";
+        for(double val : values){
+            ret += df.format(val) + "  "; 
+        }
+        return ret + "]";
+    }
+    
+    private static double average(double[] n) {
+        double sum = 0;
+        for(double value:n){
+            sum+=value;
+        }
+        return sum/n.length;
+    }
+    
+    private static String confidanceInterval(double[] values) {
+        double average = average(values);
+        double varianceSum = 0.0;
+        for (int i = 0; i < values.length; i++) {
+            varianceSum += (values[i] - average) * (values[i] - average);
+        }
+        double variance = varianceSum / (values.length - 1);
+        double standardDaviation= Math.sqrt(variance);
+        DecimalFormat df = new DecimalFormat("#.##");
+        return df.format(average) + " +- " + df.format(2.58 * standardDaviation);
+    }
+
+    private static void printResultIndex() {
+        System.out.println("Accuracy: \n\t" + confidanceInterval(accuracyFold)+ " \t "  + printStringVector(accuracyFold));
+        System.out.println("F-Score: \n\t" + confidanceInterval(fscoreFold)+ " \t"  + printStringVector(fscoreFold));
+        System.out.println("AUC: \n\t" + confidanceInterval(AUCFold)+ " \t"  + printStringVector(AUCFold));
+        System.out.println("\n");
+    }
+    
+    private static int getBestIndex(double[] values){
+        int index = 0;
+        double maxTmp = 0.0;
+        for(int pos=0; pos<values.length; pos++){
+            if(values[pos] > maxTmp){
+                maxTmp = values[pos];
+                index = pos;
+            }
+        }
+        return index;
+    }
+
+    private static void printAndSerializeBestClassifier() throws Exception {
+        System.out.println("Classifier with best F-Score: ");
+        int bestFScoreClassifierIndex = getBestIndex(fscoreFold);
+        printIndex(evalFold[bestFScoreClassifierIndex]);
+        // TODO non posso esportarlo perchè Snowball Stemmer non è serializzabile
+        //exportClassifier(classifierFold[bestFScoreClassifierIndex], classifierName);
     }
 
 }

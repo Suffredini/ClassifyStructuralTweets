@@ -45,12 +45,7 @@
           <version>13</version>
         </dependency>
           		
-        <!-- https://mvnrepository.com/artifact/com.github.fracpete/snowball-stemmers-weka-package -->
-        <dependency>
-            <groupId>com.github.fracpete</groupId>
-            <artifactId>snowball-stemmers-weka-package</artifactId>
-            <version>1.0.1</version>
-        </dependency>
+
 
         <dependency>
             <groupId>nz.ac.waikato.cms.weka</groupId>
@@ -69,6 +64,22 @@
             <groupId>nz.ac.waikato.cms.weka</groupId>
             <artifactId>SMOTE</artifactId>
             <version>1.0.3</version>
+        </dependency>
+        
+            <dependency>
+        <groupId>com.github.fracpete</groupId>
+            <artifactId>snowball-stemmers-weka-package</artifactId>
+            <version>1.0.1</version>
+            <exclusions>
+              <exclusion>
+                <groupId>nz.ac.waikato.cms.weka</groupId>
+                <artifactId>weka-dev</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>org.pentaho.pentaho-commons</groupId>
+                <artifactId>pentaho-package-manager</artifactId>
+              </exclusion>
+            </exclusions>
         </dependency>
         
     </dependencies>

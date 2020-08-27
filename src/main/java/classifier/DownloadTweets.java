@@ -15,7 +15,7 @@ import java.util.List;
  */
 public class DownloadTweets {
      public static void main(String[] args){
-        String[] keyWord = {"tubazione"};
+        String[] keyWord = {"strada","via","infrastruttura","piazza"};
                             /*"condotte","condotta", "pioggia", "condotto","scarico",
                                 "scarichi", "scarica", "scoli", "scolo", "scola",
                                 "sommersa", "sommerge", "sommergere"*/

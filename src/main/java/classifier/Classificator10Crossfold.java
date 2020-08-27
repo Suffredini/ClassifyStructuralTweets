@@ -34,7 +34,7 @@ import weka.filters.unsupervised.attribute.StringToWordVector;
 
 public class Classificator10Crossfold {
     /* START Parameter */
-    private static final String rowTweetsCSV = "file/tweets_ripuliti.csv";//"file/tweetsVirgola.csv"; //formato file: tweet,classe
+    private static final String rowTweetsCSV = "file/tweets.csv";
     private static final String stopWordFile = "file/stopWord";    
     
     private static int selectedClassifier = 3;  /*  (0) DecisionTree 
@@ -46,9 +46,11 @@ public class Classificator10Crossfold {
                                                 */
     private static final int numberFolds = 10;
     private static final int numberSeed = 3;
+    private static final int kValue = 2; // k of k-nn 
+    private static final int cValue = 1; // c of SVM 
     /* END Parameter */
     
-    /* START Da esportare assieme al classificatore per il preprocessing */
+    /* Keyword utilizzate per scaricare i tweet che andranno classificati nel tool finale */
     private static final String[] keyWord = 
     {
         "fogne","fognatura","fognaria","allagato","allagata",
@@ -56,7 +58,7 @@ public class Classificator10Crossfold {
         "tubature","sommerse","tombino","tombini","scolo",
         "allerta meteo","maltempo"
     };  
-    /* END Da esportare assieme al classificatore per il preprocessing */
+
     
     private static Instances trainSet, testSet, data;
     private static int numberTweets;
@@ -64,7 +66,8 @@ public class Classificator10Crossfold {
     private static String[] classes;
     private static double[] accuracyFold;
     private static double[] fscoreFold;
-    private static double[] AUCFold;
+    private static double[] precisionFold;
+    private static double[] recallFold;
     private static String[] matrixFold;
     private static Evaluation[] evalFold;
     private static FilteredClassifier[] classifierFold;
@@ -79,7 +82,8 @@ public class Classificator10Crossfold {
         
         accuracyFold = new double[numberFolds*numberSeed];
         fscoreFold = new double[numberFolds*numberSeed];
-        AUCFold = new double[numberFolds*numberSeed];
+        precisionFold = new double[numberFolds*numberSeed];
+        recallFold = new double[numberFolds*numberSeed];
         matrixFold = new String[numberFolds*numberSeed];
         evalFold = new Evaluation[numberFolds*numberSeed];
         classifierFold = new FilteredClassifier[numberFolds*numberSeed];
@@ -109,7 +113,7 @@ public class Classificator10Crossfold {
     
     private static void importTweets(String path) throws Exception {
         // Il file path è stato preparato manualmente mediante excel
-        List<String[]> classList = IOManager.readFromCsvFile(",",path);
+        List<String[]> classList = IOManager.readFromCsvFile(";",path);
  
         numberTweets = classList.size();
         tweets = new String[numberTweets];
@@ -200,6 +204,8 @@ public class Classificator10Crossfold {
     private static  AttributeSelection getAttributeSelectionFilter() throws Exception {
         Ranker ranker = new Ranker();
         ranker.setThreshold(0);	// IG threshold
+        //ranker.setNumToSelect(50);
+        
         AttributeSelection as= new AttributeSelection();
         as.setEvaluator(new InfoGainAttributeEval());
         as.setSearch(ranker);
@@ -254,39 +260,37 @@ public class Classificator10Crossfold {
                 System.out.println("[ERROR] Wrong classificator selected, check paramiter");
                 System.exit(1);            
         } 
-         
+        
         classifier.setClassifier(classifierSelected);
         classifier.buildClassifier(trainSet);
+        
                       
         Evaluation eval = new Evaluation(trainSet);
-        eval.evaluateModel(classifier, testSet);
         
+        eval.evaluateModel(classifier, testSet);
+
         saveFoldResult(index,eval,classifier);
     }
     
     private static void printIndex(Evaluation eval) throws Exception{
         double acc = eval.pctCorrect();
-        double precision = eval.truePositiveRate(1);                        
-        double fscore = eval.fMeasure(1);
-        if(Double.isNaN(fscore)){
-            // Con Recall e precision == 0.0 da nan quindi va settato
-            fscore = 0.0;
-        }
-        double recall = eval.recall(1);
-        double auc = eval.areaUnderROC(1);
+        double tp = eval.truePositiveRate(1);
+        double fp = eval.falsePositiveRate(1);
+        double fn = eval.falseNegativeRate(1);
+        double precision = tp/(tp+fp);
+        double recall = tp/(tp+fn);
+        double fscore = 2 * ((precision*recall)/(precision + recall));
         String confusionMatrix = eval.toMatrixString();
         DecimalFormat df = new DecimalFormat("#.##");
         
-        String indexValue =  "\t| Accuracy: " + df.format(acc) +
-                        "\n" +
-                        "\t| Precision: " + df.format(precision*100) +
-                        "\n" +
-                        "\t| F-Score: " + df.format(fscore*100) +
-                        //"\n" +
-                        //"\t| Recall: " + df.format(recall*100) +
-                        "\n" +
-                        "\t| AUC: " + df.format(auc*100) +
-                        "\n";
+        String indexValue =     "\t| Accuracy: " + df.format(acc) +
+                                "\n" +
+                                "\t| F-Score: " + df.format(fscore*100) +
+                                "\n" +
+                                "\t| Precision: " + df.format(precision*100) +
+                                "\n" +
+                                "\t| Recall: " + df.format(recall*100) +
+                                "\n";
         
         System.out.println(indexValue);
         System.out.println(confusionMatrix); 
@@ -302,7 +306,7 @@ public class Classificator10Crossfold {
     
     private static Classifier doSVM() throws Exception {
         LibSVM classificator= new LibSVM();
-        String options = ( "-S 0 -K 0 -D 1 -G 0.1 -R 0.0 -N 0.2 -M 40.0 -C 1 -E 0.001 -P 0.1 -W 1" );
+        String options = ( "-S 0 -K 0 -D 1 -G 0.1 -R 0.0 -N 0.2 -M 40.0 -C " + cValue + " -E 0.001 -P 0.1 -W 1" );
         String[] optionsArray = options.split( " " );
         classificator.setOptions( optionsArray );
         return (Classifier) classificator;
@@ -315,7 +319,7 @@ public class Classificator10Crossfold {
     
     private static Classifier dokNN() throws Exception {        
         IBk classificator = new IBk();
-        String options = "-K 1";
+        String options = "-K "+kValue;
         String[] optionsArray = options.split( " " );
         classificator.setOptions( optionsArray );
         return (Classifier) classificator;
@@ -361,15 +365,27 @@ public class Classificator10Crossfold {
     }
 
     private static void saveFoldResult(int index, Evaluation eval, FilteredClassifier classifier) throws Exception {
-        double fscore = eval.fMeasure(1);
+        /*double fscore = eval.fMeasure(1);
         if(Double.isNaN(fscore)){
             // Con Recall e precision == 0.0 da nan quindi va settato
             fscore = 0.0;
-        }
+        }*/
+        
+        double tp = eval.truePositiveRate(1);
+        double fp = eval.falsePositiveRate(1);
+        double fn = eval.falseNegativeRate(1);
+        
+        double precision = tp/(tp+fp);
+        double recall = tp/(tp+fn);
+        double fscore = 2 * ((precision*recall)/(precision + recall));
+        
         accuracyFold[index] = eval.pctCorrect();
         fscoreFold[index] = fscore*100;
-        AUCFold[index] =  eval.areaUnderROC(1)*100;
+        precisionFold[index] =  precision*100;
+        recallFold[index] = recall*100;
         matrixFold[index] =  eval.toMatrixString();
+        
+        //TODO basta salvare eval
         evalFold[index] = eval;
         classifierFold[index] =classifier;
     }
@@ -406,7 +422,9 @@ public class Classificator10Crossfold {
     private static void printResultIndex() {
         System.out.println("Accuracy: \n\t" + confidanceInterval(accuracyFold)+ " \t "  + printStringVector(accuracyFold));
         System.out.println("F-Score: \n\t" + confidanceInterval(fscoreFold)+ " \t"  + printStringVector(fscoreFold));
-        System.out.println("AUC: \n\t" + confidanceInterval(AUCFold)+ " \t"  + printStringVector(AUCFold));
+        System.out.println("Precision: \n\t" + confidanceInterval(precisionFold)+ " \t"  + printStringVector(precisionFold));
+        System.out.println("Recall: \n\t" + confidanceInterval(recallFold)+ " \t"  + printStringVector(recallFold));
+        
         System.out.println("\n");
     }
     

@@ -5,8 +5,7 @@ import java.util.List;
 
 public class TweetsImport {
     public static List<String[]> getTweets(String[] words, String fromDate, String toDate, String position) {
-        
-        position= "43.1,12.1,1000mi";// TODO da rimuovere
+        //position= "43.1,12.1,1000mi";// TODO da rimuovere
         TwitterCriteria criteria = null;
         Tweet t = null;
         List<String[]> allTweets = new ArrayList<String[]>();

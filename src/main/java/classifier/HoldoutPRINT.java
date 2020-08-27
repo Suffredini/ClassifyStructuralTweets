@@ -32,20 +32,19 @@ import weka.filters.unsupervised.attribute.NominalToString;
 import weka.filters.unsupervised.attribute.StringToWordVector;
 
 
-public class Classificator10Crossfold {
+public class HoldoutPRINT {
     /* START Parameter */
     private static final String rowTweetsCSV = "file/tweets_ripuliti.csv";//"file/tweetsVirgola.csv"; //formato file: tweet,classe
     private static final String stopWordFile = "file/stopWord";    
     
-    private static int selectedClassifier = 3;  /*  (0) DecisionTree 
+    private static int selectedClassifier = 0;  /*  (0) DecisionTree 
                                                     (1) SVM 
                                                     (2) MultinomialNB 
                                                     (3) kNN 
                                                     (4) Adaboost 
                                                     (5) RandomForest
                                                 */
-    private static final int numberFolds = 10;
-    private static final int numberSeed = 3;
+    private static final int numberSeed = 30;
     /* END Parameter */
     
     /* START Da esportare assieme al classificatore per il preprocessing */
@@ -67,7 +66,7 @@ public class Classificator10Crossfold {
     private static double[] AUCFold;
     private static String[] matrixFold;
     private static Evaluation[] evalFold;
-    private static FilteredClassifier[] classifierFold;
+    private static Classifier[] classifierFold;
     private static String classifierName = "";
 
     
@@ -77,35 +76,42 @@ public class Classificator10Crossfold {
         // Importo i tweet             
         importTweets(rowTweetsCSV);
         
-        accuracyFold = new double[numberFolds*numberSeed];
-        fscoreFold = new double[numberFolds*numberSeed];
-        AUCFold = new double[numberFolds*numberSeed];
-        matrixFold = new String[numberFolds*numberSeed];
-        evalFold = new Evaluation[numberFolds*numberSeed];
-        classifierFold = new FilteredClassifier[numberFolds*numberSeed];
-        
-        // Ripeto per le 10 fold dalvandomi i risultati ad ogni istanza
-        for(int fold=0; fold<numberFolds; fold++){
+        for(int stampa=0; stampa<6; stampa++){
+            selectedClassifier = stampa;
+            
+            accuracyFold = new double[numberSeed];
+            fscoreFold = new double[numberSeed];
+            AUCFold = new double[numberSeed];
+            matrixFold = new String[numberSeed];
+            evalFold = new Evaluation[numberSeed];
+            classifierFold = new Classifier[numberSeed];
+
             for(int seed=0; seed<numberSeed; seed++){
                 // Ottengo test set e training set
-                splitDataset(fold+1,seed); 
+                splitDataset(seed); 
 
                 // Bilancio il train set
-                trainSet = classInstancesBalancing(trainSet, seed);        
+                trainSet = classInstancesBalancing(trainSet,seed);        
 
                 // Uso un classificatore
-                textClassification(fold*numberSeed+seed);
+                textClassification(seed);
             }
-        }
-        
-          
-        System.out.println("\nClassificator: " + classifierName);
-        printResultIndex();
-        printAndSerializeBestClassifier();
 
+
+
+            //System.out.println("\nClassificator: " + classifierName);
+            printResultIndex();
+            //printAndSerializeBestClassifier();
+        }
         System.out.println("Classifier [END]");
     }
     
+    private static void printResultIndex() {
+        //System.out.println(printStringVector(accuracyFold));
+        //System.out.println(printStringVector(fscoreFold));
+        System.out.println(printStringVector(AUCFold));
+        //System.out.println("\n");
+    }
     
     private static void importTweets(String path) throws Exception {
         // Il file path è stato preparato manualmente mediante excel
@@ -128,8 +134,8 @@ public class Classificator10Crossfold {
         List<String[]> out = new ArrayList<>();
         String[] tmp = new String[2];
         
-        tmp[0] = "tweetTweet";
-        tmp[1] = "classTweet";
+        tmp[0] = "tweet";
+        tmp[1] = "classe";
         out.add(tmp);
         
         for(int pos = 0; pos<numberTweets; pos++){
@@ -156,10 +162,10 @@ public class Classificator10Crossfold {
         data.setClassIndex(data.numAttributes() - 1); 
     }
     
-    private static void splitDataset(int fold, int seed) throws Exception {
+    private static void splitDataset(int seed) throws Exception {
         // Estraggo train set
         StratifiedRemoveFolds strRmvFoldsTrain = new StratifiedRemoveFolds();
-        String optionsSRFTrain = ( "-S "+seed+" -N "+numberFolds+" -F "+fold+" -V");
+        String optionsSRFTrain = ( "-S "+seed+" -N 4 -F 1 -V");
         String[] optionsArrayTrain = optionsSRFTrain.split( " " );
         strRmvFoldsTrain.setOptions(optionsArrayTrain);
         strRmvFoldsTrain.setInputFormat(data);
@@ -167,7 +173,7 @@ public class Classificator10Crossfold {
 
         // Estraggo test set
         StratifiedRemoveFolds strRmvFoldsTest = new StratifiedRemoveFolds();
-        String optionsSRFTest = ( "-S "+seed+" -N "+numberFolds+" -F "+fold);
+        String optionsSRFTest = ( "-S "+seed+" -N 4 -F 1");
         String[] optionsArrayTest = optionsSRFTest.split( " " );
         strRmvFoldsTest.setOptions(optionsArrayTest);
         strRmvFoldsTest.setInputFormat(data);
@@ -175,31 +181,41 @@ public class Classificator10Crossfold {
     }
 
     private static StringToWordVector getTextElaborationFilter() throws Exception {
-        MyStopwordsHandler msh = new MyStopwordsHandler(stopWordFile);
+        // Creo l'handler per le StopWord
+        List<String> stopWords =  IOManager.readFromFile(stopWordFile);        
+        StopwordsHandler stopwords = new StopwordsHandler() {
+
+            @Override
+            public boolean isStopword(final String word) {
+                return stopWords.contains(word);
+            }
+        };
         
+        //  Applico tokenization, stop word e stemming
         StringToWordVector filter = new StringToWordVector();
         filter.setAttributeIndices("1");
         filter.setTokenizer(new WordTokenizer());
-        filter.setWordsToKeep(100000); // Massimo numero di feat. da mantenere
+        filter.setWordsToKeep(100000); //set to max value to include the max number of features
         filter.setLowerCaseTokens(true);
         filter.setDoNotOperateOnPerClassBasis(true);
         filter.setIDFTransform(true); //Inverse document frequency
-        filter.setTFTransform(true);  // Tiene conto della frequenza del termine nella parola        
+        filter.setTFTransform(true);  // term frequency
         
-        // Aggiungo le Stopwords
-        filter.setStopwordsHandler(msh); //external stop words file
+        /*WordsFromFile stopwords = new WordsFromFile();
+        stopwords.setStopwords(new File("file/stopWord"));*/
+        
+        filter.setStopwordsHandler(stopwords); //external stop words file
 
-        // Aggiungo lo Stemmer          
+        //for stemming the data          
         SnowballStemmer stemmer = new SnowballStemmer();
         stemmer.setStemmer("italian");
         filter.setStemmer(stemmer);
-        
         return filter;
     }
     
     private static  AttributeSelection getAttributeSelectionFilter() throws Exception {
         Ranker ranker = new Ranker();
-        ranker.setThreshold(0);	// IG threshold
+        ranker.setThreshold(0);	// information gain threshold
         AttributeSelection as= new AttributeSelection();
         as.setEvaluator(new InfoGainAttributeEval());
         as.setSearch(ranker);
@@ -221,32 +237,32 @@ public class Classificator10Crossfold {
         switch(selectedClassifier){
             case 0:                
                 classifierSelected = doDecisionTree();
-                classifierName = "DecisionTree(10CV)";
+                classifierName = "DecisionTree(HOLD)";
                 break;
                 
             case 1:                
                 classifierSelected = doSVM();
-                classifierName = "SVM(10CV)";
+                classifierName = "SVM(HOLD)";
                 break;
                 
             case 2:                
                 classifierSelected = doMultinomialNB();
-                classifierName = "MultinomialNB(10CV)";
+                classifierName = "MultinomialNB(HOLD)";
                 break;
                 
             case 3:                
                 classifierSelected = dokNN();
-                classifierName = "kNN(10CV)";
+                classifierName = "kNN(HOLD)";
                 break;
                 
             case 4:                
                 classifierSelected = doAdaboost();
-                classifierName = "Adaboost(10CV)";
+                classifierName = "Adaboost(HOLD)";
                 break;
                 
             case 5:                
                 classifierSelected = doRandomForest();
-                classifierName = "RandomForest(10CV)";
+                classifierName = "RandomForest(HOLD)";
                 break;
                 
             default:
@@ -257,7 +273,7 @@ public class Classificator10Crossfold {
          
         classifier.setClassifier(classifierSelected);
         classifier.buildClassifier(trainSet);
-                      
+        
         Evaluation eval = new Evaluation(trainSet);
         eval.evaluateModel(classifier, testSet);
         
@@ -275,6 +291,7 @@ public class Classificator10Crossfold {
         double recall = eval.recall(1);
         double auc = eval.areaUnderROC(1);
         String confusionMatrix = eval.toMatrixString();
+        
         DecimalFormat df = new DecimalFormat("#.##");
         
         String indexValue =  "\t| Accuracy: " + df.format(acc) +
@@ -403,13 +420,7 @@ public class Classificator10Crossfold {
         return df.format(average) + " +- " + df.format(2.58 * standardDaviation);
     }
 
-    private static void printResultIndex() {
-        System.out.println("Accuracy: \n\t" + confidanceInterval(accuracyFold)+ " \t "  + printStringVector(accuracyFold));
-        System.out.println("F-Score: \n\t" + confidanceInterval(fscoreFold)+ " \t"  + printStringVector(fscoreFold));
-        System.out.println("AUC: \n\t" + confidanceInterval(AUCFold)+ " \t"  + printStringVector(AUCFold));
-        System.out.println("\n");
-    }
-    
+
     private static int getBestIndex(double[] values){
         int index = 0;
         double maxTmp = 0.0;
@@ -426,10 +437,8 @@ public class Classificator10Crossfold {
         System.out.println("Classifier with best F-Score: ");
         int bestFScoreClassifierIndex = getBestIndex(fscoreFold);
         printIndex(evalFold[bestFScoreClassifierIndex]);
-        exportClassifier(classifierFold[bestFScoreClassifierIndex], classifierName);
+        // TODO non posso esportarlo perchè Snowball Stemmer non è serializzabile
+        //exportClassifier(classifierFold[bestFScoreClassifierIndex], classifierName);
     }
-    
-
-
 
 }

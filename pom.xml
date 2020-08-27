@@ -65,9 +65,9 @@
             <artifactId>SMOTE</artifactId>
             <version>1.0.3</version>
         </dependency>
-        
-            <dependency>
-        <groupId>com.github.fracpete</groupId>
+
+        <dependency>
+            <groupId>com.github.fracpete</groupId>
             <artifactId>snowball-stemmers-weka-package</artifactId>
             <version>1.0.1</version>
             <exclusions>
@@ -81,7 +81,6 @@
               </exclusion>
             </exclusions>
         </dependency>
-        
     </dependencies>
 
 

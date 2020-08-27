@@ -34,7 +34,7 @@ import weka.filters.unsupervised.attribute.StringToWordVector;
 
 public class Classificator10Holdout {
     /* START Parameter */
-    private static final String rowTweetsCSV = "file/tweets_ripuliti.csv";//"file/tweetsVirgola.csv"; //formato file: tweet,classe
+    private static final String rowTweetsCSV = "file/tweetsVirgola.csv";//"file/tweets_ripuliti.csv"; //formato file: tweet,classe
     private static final String stopWordFile = "file/stopWord";    
     
     private static int selectedClassifier = 5;  /*  (0) DecisionTree 
@@ -66,7 +66,7 @@ public class Classificator10Holdout {
     private static double[] AUCFold;
     private static String[] matrixFold;
     private static Evaluation[] evalFold;
-    private static Classifier[] classifierFold;
+    private static FilteredClassifier[] classifierFold;
     private static String classifierName = "";
 
     
@@ -81,14 +81,14 @@ public class Classificator10Holdout {
         AUCFold = new double[numberSeed];
         matrixFold = new String[numberSeed];
         evalFold = new Evaluation[numberSeed];
-        classifierFold = new Classifier[numberSeed];
+        classifierFold = new FilteredClassifier[numberSeed];
         
         for(int seed=0; seed<numberSeed; seed++){
             // Ottengo test set e training set
             splitDataset(seed); 
 
             // Bilancio il train set
-            trainSet = classInstancesBalancing(trainSet);        
+            trainSet = classInstancesBalancing(trainSet,seed);        
 
             // Uso un classificatore
             textClassification(seed);
@@ -283,15 +283,17 @@ public class Classificator10Holdout {
         double auc = eval.areaUnderROC(1);
         String confusionMatrix = eval.toMatrixString();
         
-        String indexValue =  "\t| Accuracy: " + acc +
+        DecimalFormat df = new DecimalFormat("#.##");
+        
+        String indexValue =  "\t| Accuracy: " + df.format(acc) +
                         "\n" +
-                        "\t| Precision: " + precision*100 +
+                        "\t| Precision: " + df.format(precision*100) +
                         "\n" +
-                        "\t| F-Score: " + fscore*100 +
+                        "\t| F-Score: " + df.format(fscore*100) +
+                        //"\n" +
+                        //"\t| Recall: " + df.format(recall*100) +
                         "\n" +
-                        "\t| Recall: " + recall*100 +
-                        "\n" +
-                        "\t| AUC: " + auc*100 +
+                        "\t| AUC: " + df.format(auc*100) +
                         "\n";
         
         System.out.println(indexValue);
@@ -337,10 +339,10 @@ public class Classificator10Holdout {
         return (Classifier) classificator;
     }
       
-    private static Instances classInstancesBalancing(Instances inst) throws Exception {
+    private static Instances classInstancesBalancing(Instances inst, int seed) throws Exception {
         //Balancing dataset
         SpreadSubsample ff = new SpreadSubsample();
-        String opt = "-M 1.0 -X 0.0 -S 1";
+        String opt = "-M 1.0 -X 0.0 -S "+seed;
         String[] optArray = weka.core.Utils.splitOptions(opt);
         ff.setOptions(optArray);
         ff.setInputFormat(inst);        
@@ -434,6 +436,7 @@ public class Classificator10Holdout {
         printIndex(evalFold[bestFScoreClassifierIndex]);
         // TODO non posso esportarlo perchè Snowball Stemmer non è serializzabile
         //exportClassifier(classifierFold[bestFScoreClassifierIndex], classifierName);
+        
     }
 
 }

@@ -1,6 +1,6 @@
 classifier\DownloadTweets.class
-utility\IOManager.class
-utility\ExportedClassifierData.class
 classifystructuraltweets\TweetsImport.class
 classifystructuraltweets\FeaturesExtractor.class
+utility\IOManager.class
+utility\ExportedClassifierData.class
 classifystructuraltweets\TweetsTableView.class

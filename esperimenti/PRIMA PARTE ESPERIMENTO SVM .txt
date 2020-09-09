@@ -1,0 +1,32 @@
+ESPERIMENTO 1
+
+	Range esperimento:
+	dataset dove ho selezionato 150 tweet circa di pioggia invece che lasciarne 800
+
+	fold: 10
+	seed: 2
+	w0: 0,1 -> 0,9 step di 0,1 (w0 è il peso dato alla classe 0 nel classificatore SVM, w1 = 1 - w0) 0:irrilevant, 1:structural
+	perc oversampling: 50 -> 200 step di 20
+	rapporto undersampling: 1:1 -> 1:10 step di 1
+
+	Best score:
+	FSCORE: 40.586663086816856 in m: 5 - perc: 130.0 - w0: 0.3
+	PRECISION: 50.13095238095238 in m: 9 - perc: 150.0 - w0: 0.4
+	
+	
+ESPERIMENTO 2
+
+	Range esperimento:
+	dataset dove ho selezionato 150 tweet circa di pioggia invece che lasciarne 800
+	
+	fold: 10
+	seed: 1
+	w0: 0,25 -> 0,35 step di 0,01 (w0 è il peso dato alla classe 0 nel classificatore SVM, w1 = 1 - w0) 0:irrilevant, 1:structural
+	perc oversampling: 125 -> 135 step di 1
+	rapporto undersampling: 1:5 (fisso)
+
+	Best score:
+	FSCORE: 40.693471302193416 in m: 5 - perc: 131.0 - w0: 0.30000000000000004
+	PRECISION: 38.47039433995956 in m: 5 - perc: 136.0 - w0: 0.3500000000000001
+
+

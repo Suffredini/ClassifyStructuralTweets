@@ -33,7 +33,7 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
-import utility.ExportedClassifierData;
+import utility.ClassifierData;
 import weka.core.Attribute;
 import weka.core.DenseInstance;
 import weka.core.Instance;
@@ -60,15 +60,40 @@ public class FXMLController implements Initializable {
     @FXML private DatePicker datePickerFrom, datePickerTo;
     @FXML public Button buttonSearch;
     
-    private ExportedClassifierData ecd; 
+    private ClassifierData cd; 
     
     
     private String position;    
     private List<String[]> tweets;
     private TweetsTableView actualRow;
     
-    private static final String stopWordFile = "file/stopWord";
-    private static final String stemmerCSV = "file/stemmer.csv";
+    private static final String newDataset = "file/newDataset.csv";
+
+    
+    public void onActionButtonCorrect(ActionEvent event){
+        exportTweet("Structural");
+    }
+    
+    public void onActionButtonWrong(ActionEvent event){
+        exportTweet("NonStructural");
+    }
+    
+    private void exportTweet(String classLabel){
+        tableTweets.getItems().remove(actualRow);
+        textAreaTweet.clear();
+        
+        List<String[]> thingsToWrite = new ArrayList<>();
+        String[] tweet = new String[3];
+        
+        tweet[0] = actualRow.getText();
+        tweet[1] = classLabel;
+        tweet[2] = actualRow.getWord();
+                
+        thingsToWrite.add(tweet);
+        IOManager.writeAppendToCsvFile(thingsToWrite, ";", newDataset);
+    }
+    
+    
     
     public void onActionButtonSearch(ActionEvent event){
         setClassifierCombobox();
@@ -88,7 +113,7 @@ public class FXMLController implements Initializable {
             public void run() {
                 String choosenClassifier = (String) comboClassifier.getValue();
                 try {
-                    ecd = (ExportedClassifierData) IOManager.loadClassBinary("classifier/"+choosenClassifier);
+                    cd = (ClassifierData) IOManager.loadClassBinary("classifier/"+choosenClassifier);
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 } catch (ClassNotFoundException ex) {
@@ -97,7 +122,7 @@ public class FXMLController implements Initializable {
                 
 
                 
-                tweets = TweetsImport.getTweets(ecd.researchKey, datePickerFrom.getValue().toString(), datePickerTo.getValue().toString(), position);  
+                tweets = TweetsImport.getTweets(cd.researchKey, datePickerFrom.getValue().toString(), datePickerTo.getValue().toString(), position);  
                 
                 // Rimuovo i tweet duplicati
                 List<String[]> temp = new ArrayList<>();
@@ -148,7 +173,7 @@ public class FXMLController implements Initializable {
         }
         
         //Preprocessing
-        unlabeledTweets = FeaturesExtractor.deleteUrlAndPic(unlabeledTweets);    
+        unlabeledTweets = deleteUrlAndPic(unlabeledTweets);    
 
         List<String[]> out = new ArrayList<>();
         String[] tmp = new String[2];
@@ -179,102 +204,17 @@ public class FXMLController implements Initializable {
         
         // Selezione Class come attributo classe
         data.setClassIndex(data.numAttributes() - 1);  
-        
-        
-        // Creo l'handler per le StopWord
-        List<String> stopWords =  IOManager.readFromFile(stopWordFile);        
-        StopwordsHandler stopwords = new StopwordsHandler() {
-            @Override
-            public boolean isStopword(final String word) {
-                return stopWords.contains(word);
-            }
-        };
-        
-        //  Applico tokenization, stop word e stemming
-        StringToWordVector filter = new StringToWordVector();
-        filter.setAttributeIndices("1");
-        filter.setTokenizer(new WordTokenizer());
-        filter.setInputFormat(data);
-        filter.setWordsToKeep(100000); //set to max value to include the max number of features
-        filter.setLowerCaseTokens(true);
-        filter.setDoNotOperateOnPerClassBasis(true);
-        filter.setIDFTransform(true); //Inverse document frequency
-        filter.setTFTransform(true);  // term frequency            
-        filter.setStopwordsHandler(stopwords); //external stop words file
-
-        //for stemming the data	        			
-        String[] stemOptions = {"-S", "italian"};
-        SnowballStemmer stemmer = new SnowballStemmer();
-        stemmer.setOptions(stemOptions);
-        filter.setStemmer(stemmer);
-        
-        data = Filter.useFilter(data, filter);
-
-        ArrayList<Attribute> attributes = new ArrayList<>();
-        
-        
-        Set keys = ecd.attributes.keySet();   
-        String[] att = new String[keys.size()+1];
-        Iterator it = keys.iterator();
-        int iter = 0;
-        while (it.hasNext()) {
-           att[iter] = (String) it.next();
-           iter++;
-        }
-        att[keys.size()] = "classLabel";
-        
-        
-        for(String attributeName:att){
-            attributes.add(new Attribute(attributeName));
-        }
-        //attributes.get(attributes.size()-1).
-        
-        //Creo istanza di Instances vuota alla quale passo la lista degli attributi
-        Instances toClassifyInstances = new Instances("toClassify",attributes,0);
-        int attributeNumber = attributes.size();  // # attributi finali
-        
-        double igValue;
-        Instance newInstance;
-        double attributeValue ; 
-        Attribute attribute;
-        
-        //Attribute toReplaceAttribute = data.classAttribute();
-       
-        for(int instance = 0; instance<data.numInstances(); instance++){            
-            newInstance = new DenseInstance(attributeNumber);
-                 
-            for(int attr = 0; attr<attributeNumber; attr++){
-                if(attr==attributeNumber-1){
-                    // per classLabel aggiungo un valore random perchè in data non è presente e ritornerebbe null (tanto la setta il classificatore)
-                    newInstance.setValue(attr, 0.0);
-                    break;
-                }          
-                
-                //verifico se attributo per classificatore è presente in quelli da rimpiazzare, cerco indice di corrispondenza dell'attributo
-                attribute = attributes.get(attr);
-                attributeValue = data.get(instance).value(attribute);
-                if(attributeValue != 0.0){
-                    //System.out.println(attr+"/"+attributeNumber+" --- "+attribute.name());
-                    igValue = ecd.attributes.get(attribute.name()); //TODO testare      da null pointer               
-                } else {
-                    igValue = 0.0;
-                }
-                //System.out.println(igValue);
-                newInstance.setValue(attr, igValue);
-            }
-            // Inserisco l'istanza creata al dataset da classificare preservandone l'ordinamento
-            toClassifyInstances.add(instance,newInstance);
-        }
+    
      
-        toClassifyInstances.setClass(toClassifyInstances.attribute("classLabel"));
-        Instances labeled = new Instances(toClassifyInstances);   
+        //data.setClass(data.attribute("classLabel"));
+        Instances labeled = new Instances(data);   
         System.out.println("Totale tweet analizzati ---> "+labeled.numInstances());
         
         
 // label instances
         double clsLabel;
-        for (int i = 0; i < toClassifyInstances.numInstances(); i++) {
-           clsLabel = ecd.classifier.classifyInstance(toClassifyInstances.instance(i));
+        for (int i = 0; i < data.numInstances(); i++) {
+           clsLabel = cd.classifier.classifyInstance(data.instance(i));
            labeled.instance(i).setClassValue(clsLabel);
         }
 
@@ -283,7 +223,7 @@ public class FXMLController implements Initializable {
         double[] instancesClass = labeled.attributeToDoubleArray(labeled.numAttributes()-1);
         for(int i=0; i<tweets.size(); i++){
             
-            if(instancesClass[i] == 0.0){ // 0.0 Strutturali, 1.0 Non Strutturali
+            if(instancesClass[i] == 1.0){ // 1.0 Strutturali, 0.0 Non Strutturali
                 tweetsToShow.add(tweets.get(i));
                
             }
@@ -307,12 +247,20 @@ public class FXMLController implements Initializable {
         comboClassifier.setItems(FXCollections.observableArrayList(names));
     }
     
+    
+    
+    
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         setClassifierCombobox();
         tableTweets.setItems(tweetsOl);  
         
-        // Specifico le colonne cosa devono mostrare
+        // Coordinate di Pisa settate di default
+        labelX.setText("43.7118");
+        labelY.setText("10.4147");
+        labelRange.setText("3"); // Circa 5km
+        
+        // Specifico le colonne cosa devono mostrare 
         tweetCol.setCellValueFactory(new PropertyValueFactory<>("text"));
         datCol.setCellValueFactory(new PropertyValueFactory<>("date"));
         
@@ -328,6 +276,22 @@ public class FXMLController implements Initializable {
                       
             return row;
         });
+       
 
-    }    
+
+    } 
+    
+    private static String[] deleteUrlAndPic(String[] tweets){
+        String urlRegex = "http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\), ]|(?:%[0-9a-fA-F][0-9a-fA-F]))+";
+        String picRegex = "pic.twitter.com/(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\), ]|(?:%[0-9a-fA-F][0-9a-fA-F]))+";
+        String hashtagRegex = "\\B#\\w*[a-zA-Z]+\\w*";
+        String mentionsRegex = "(?:@[\\w_]+)";        
+   
+        for(int i = 0; i<tweets.length; i++){
+            // "\\p{P}" rimuove tutta la punteggiatura, "( )+" rimpiazza spazzi bianchi multipli con uno solo 
+            tweets[i] = tweets[i].replaceAll(urlRegex, "").replaceAll(picRegex, "").replaceAll(hashtagRegex, "")
+                            .replaceAll(mentionsRegex, "").replaceAll("\\p{P}", " ").replaceAll("( )+"," ").toLowerCase();
+        }  
+        return tweets;
+    }
 }

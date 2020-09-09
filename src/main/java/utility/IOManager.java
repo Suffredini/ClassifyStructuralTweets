@@ -86,6 +86,25 @@ public class IOManager {
             e.printStackTrace();
         }
     }
+    
+    public static void writeAppendToCsvFile(List<String[]> thingsToWrite, String separator, String fileName){
+        try (FileWriter writer = new FileWriter(fileName,true)){
+            for (String[] strings : thingsToWrite) {
+                for (int i = 0; i < strings.length; i++) {
+                    writer.append(strings[i]);
+                    if(i < (strings.length-1))
+                        writer.append(separator);
+                }
+                writer.append(System.lineSeparator());
+            }
+            //writer.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    
+
 
     
 }

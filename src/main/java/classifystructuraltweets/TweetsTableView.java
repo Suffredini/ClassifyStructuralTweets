@@ -1,5 +1,8 @@
 package classifystructuraltweets;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import javafx.beans.property.SimpleStringProperty;
 
 public class TweetsTableView {
@@ -8,9 +11,12 @@ public class TweetsTableView {
     private final SimpleStringProperty position; 
     private final SimpleStringProperty word; 
 
-    public TweetsTableView(String t, String d, String p, String w){        
+    public TweetsTableView(String t, String d, String p, String w) throws ParseException{        
         text = new SimpleStringProperty(t);
-        date = new SimpleStringProperty(d);
+        
+        String[]dateTmp = d.split(" ");
+        
+        date = new SimpleStringProperty(dateTmp[2]+" "+dateTmp[1]+" "+dateTmp[5]);
         position = new SimpleStringProperty(p);   
         word = new SimpleStringProperty(w); 
     }

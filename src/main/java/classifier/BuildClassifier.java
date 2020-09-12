@@ -42,7 +42,7 @@ public class BuildClassifier {
     private static final String rowTweetsCSV = "file/tweets.csv";//"file/tweets200Pioggia.csv"; // Format: tweet;class
     private static final String stopWordFile = "file/stopWord";    
     
-    private static int selectedClassifier = 1;  /*  (0) DecisionTree 
+    private static int selectedClassifier = 0;  /*  (0) DecisionTree 
                                                     (1) SVM 
                                                     (2) MultinomialNB 
                                                     (3) kNN 
@@ -113,7 +113,7 @@ public class BuildClassifier {
        int sizeArray;
        for(int m=5; m<=5; m++){
            mValue = m;
-            for(int p=0; p<=200; p+=50){                
+            for(int p=0; p<=0; p+=50){                
                 percValue = p;
                 System.out.println("m:" + mValue + " p:"+percValue);
                 
@@ -188,7 +188,7 @@ public class BuildClassifier {
           
         System.out.println("\nClassificator: " + classifierName);
         printResultIndex();
-        //printAndSerializeBestClassifier();
+        printAndSerializeBestClassifier();
         System.out.println("Classifier [END]");
     }
     
@@ -586,7 +586,7 @@ public class BuildClassifier {
         System.out.println("Classifier with best F-Score: ");
         int bestFScoreClassifierIndex = getBestIndex(fscoreFold);
         printIndex(evalFold[bestFScoreClassifierIndex]);
-        exportClassifier(classifierFold[bestFScoreClassifierIndex], classifierName);
+        exportClassifier(classifierFold[bestFScoreClassifierIndex], classifierName+"(Unbalanced)");
     }
     
 

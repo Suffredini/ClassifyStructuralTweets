@@ -513,7 +513,7 @@ public class BuildClassifierKeywords {
     private static Classifier doSVM() throws Exception {
         LibSVM classificator= new LibSVM();
          // Mettendo i pesi -W costruendo la stringa a partire dai double non li prende...
-        String[] optionsArray = {"-S", "0", "-K", "0", "-C", ""+cValue, "-E", "0.001", "-W", "0.5 0.5"};
+        String[] optionsArray = {"-S", "0", "-K", "0", "-C", ""+cValue, "-E", "0.001", "-W", "0.3 0.7"};
         classificator.setOptions( optionsArray );
         return (Classifier) classificator;
     }

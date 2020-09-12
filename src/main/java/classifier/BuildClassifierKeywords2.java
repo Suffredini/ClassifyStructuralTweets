@@ -43,7 +43,7 @@ public class BuildClassifierKeywords2 {
     private static final String rowTweetsCSV = "file/tweetsKeywords.csv";//"file/tweets200Pioggia.csv"; // Format: tweet;class
     private static final String stopWordFile = "file/stopWord";    
     
-    private static int selectedClassifier = 4;  /*  (0) DecisionTree 
+    private static int selectedClassifier = 1;  /*  (0) DecisionTree 
                                                     (1) SVM 
                                                     (2) MultinomialNB 
                                                     (3) kNN 
@@ -202,7 +202,7 @@ public class BuildClassifierKeywords2 {
         evalExcluded.evaluateModel(classifier, datasetFinalCheck);
         printIndex(evalExcluded);
         
-        exportClassifier(classifier,classifierName+"(KeywordBalancing)");
+        exportClassifier(classifier,classifierName+"(5KeywordNS)");
         //printAndSerializeBestClassifier();
         System.out.println("Classifier [END]");
     }
@@ -297,9 +297,9 @@ public class BuildClassifierKeywords2 {
                     .forEachOrdered(keywordInstances::add);
             
             // Se una classe non ha elementi struttuirali la salto altrimenti alla fine andrebbro nel dataset tutti i tweet con classe 0
-            if(keywordInstances.attributeStats(1).nominalCounts[1] < 1){
+            /*if(keywordInstances.attributeStats(1).nominalCounts[1] < 1){
                 continue;
-            }
+            }*/
             keywordInstances.deleteAttributeAt(keywordInstances.numAttributes() - 1);            
             keywordInstances.setClassIndex(keywordInstances.numAttributes() - 1); //Questo è attributo class
             
@@ -308,7 +308,7 @@ public class BuildClassifierKeywords2 {
             //keywordInstances = doUndersampling(keywordInstances,1);
             countInstances = 0;
             indexAttribute = keywordInstances.numAttributes() - 1;
-            //Randomizzo il dataset
+            //Randomizzo il dataset cosi posso estrarre i primi maxTweet da cima
             Random random = new Random(1);
             keywordInstances.randomize(random);
             tmpInstances.clear();
@@ -328,7 +328,7 @@ public class BuildClassifierKeywords2 {
                 }
             }
             
-            if(structCount>30){
+            if(structCount>300){
                 keywordInstances = doUndersampling(keywordInstances,1);
             }else{
                 keywordInstances = tmpInstances;  
@@ -553,7 +553,7 @@ public class BuildClassifierKeywords2 {
         LibSVM classificator= new LibSVM();      
         
         // Mettendo i pesi -W costruendo la stringa a partire dai double non li prende...
-        String[] optionsArray = {"-S", "0", "-K", "0", "-C", ""+cValue, "-E", "0.001", "-W", "0.5 0.5"};
+        String[] optionsArray = {"-S", "0", "-K", "0", "-C", ""+cValue, "-E", "0.001", "-W", "0.2 0.8"};
         
         classificator.setOptions( optionsArray );
 

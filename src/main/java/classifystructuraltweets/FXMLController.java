@@ -1,11 +1,14 @@
 package classifystructuraltweets;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import utility.IOManager;
 import static utility.IOManager.readFromCsvFile;
 import static utility.IOManager.writeToCsvFile;
 import java.net.URL;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
@@ -33,6 +36,8 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import utility.ClassifierData;
 import weka.core.Attribute;
 import weka.core.DenseInstance;
@@ -59,6 +64,7 @@ public class FXMLController implements Initializable {
     @FXML private ComboBox comboClassifier;
     @FXML private DatePicker datePickerFrom, datePickerTo;
     @FXML public Button buttonSearch;
+    @FXML public ImageView imagePlumbing;
     
     private ClassifierData cd; 
     
@@ -122,7 +128,11 @@ public class FXMLController implements Initializable {
                 
 
                 
-                tweets = TweetsImport.getTweets(cd.researchKey, datePickerFrom.getValue().toString(), datePickerTo.getValue().toString(), position);  
+                try {  
+                    tweets = TweetsImport.getTweets(cd.researchKey, datePickerFrom.getValue().toString(), datePickerTo.getValue().toString(), position);
+                } catch (ParseException ex) {
+                    ex.printStackTrace();
+                }
                 
                 // Rimuovo i tweet duplicati
                 List<String[]> temp = new ArrayList<>();
@@ -151,7 +161,11 @@ public class FXMLController implements Initializable {
                 // Inserisco i tweet nella tabella
                 tweetsOl.clear();
                 for(String[] tweet:tweets){
-                    tweetsOl.add(new TweetsTableView(tweet[0],tweet[1],tweet[2],tweet[3]));
+                    try {
+                        tweetsOl.add(new TweetsTableView(tweet[0],tweet[1],tweet[2],tweet[3]));
+                    } catch (ParseException ex) {
+                        Logger.getLogger(FXMLController.class.getName()).log(Level.SEVERE, null, ex);
+                    }
                 }
                                 
                 tableTweets.setItems(tweetsOl);  
@@ -254,6 +268,12 @@ public class FXMLController implements Initializable {
     public void initialize(URL url, ResourceBundle rb) {
         setClassifierCombobox();
         tableTweets.setItems(tweetsOl);  
+        
+        try {
+            imagePlumbing.setImage(new Image(new FileInputStream("plumbing.png")));
+        } catch (FileNotFoundException ex) {
+            System.out.println("[ERROR] Immagine non trovata");
+        }
         
         // Coordinate di Pisa settate di default
         labelX.setText("43.7118");

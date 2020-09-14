@@ -64,6 +64,7 @@ public class FXMLController implements Initializable {
     @FXML private ComboBox comboClassifier;
     @FXML private DatePicker datePickerFrom, datePickerTo;
     @FXML public Button buttonSearch;
+    @FXML public Button buttonSave, buttonDelete;
     @FXML public ImageView imagePlumbing;
     
     private ClassifierData cd; 
@@ -73,7 +74,7 @@ public class FXMLController implements Initializable {
     private List<String[]> tweets;
     private TweetsTableView actualRow;
     
-    private static final String newDataset = "file/newDataset.csv";
+    private static final String newDataset = "toolOutput/newDataset.csv";
 
     
     public void onActionButtonCorrect(ActionEvent event){
@@ -86,6 +87,13 @@ public class FXMLController implements Initializable {
     
     private void exportTweet(String classLabel){
         tableTweets.getItems().remove(actualRow);
+        
+        // Se non ci sono più elementi li disabilito
+        if(tableTweets.getItems().isEmpty()){
+            buttonSave.setDisable(true);
+            buttonDelete.setDisable(true);
+        }
+        
         textAreaTweet.clear();
         
         List<String[]> thingsToWrite = new ArrayList<>();
@@ -172,7 +180,12 @@ public class FXMLController implements Initializable {
                 textAreaTweet.clear();
                 
                 buttonSearch.setText("SEARCH");
-                buttonSearch.setDisable(false);            
+                buttonSearch.setDisable(false);  
+                        
+                if(!tableTweets.getItems().isEmpty()){
+                    buttonSave.setDisable(false);
+                    buttonDelete.setDisable(false);
+                }
             }
         });
         
@@ -274,6 +287,9 @@ public class FXMLController implements Initializable {
         } catch (FileNotFoundException ex) {
             System.out.println("[ERROR] Immagine non trovata");
         }
+        
+        buttonSave.setDisable(true);
+        buttonDelete.setDisable(true);
         
         // Coordinate di Pisa settate di default
         labelX.setText("43.7118");

@@ -6,6 +6,7 @@
 package classifier;
 
 import classifystructuraltweets.TweetsImport;
+import java.text.ParseException;
 import java.util.List;
 
 
@@ -14,7 +15,7 @@ import java.util.List;
  * @author suffr
  */
 public class DownloadTweets {
-     public static void main(String[] args){
+     public static void main(String[] args) throws ParseException{
         String[] keyWord = {"guasto"};
                             /*"condotte","condotta", "pioggia", "condotto","scarico",
                                 "scarichi", "scarica", "scoli", "scolo", "scola",

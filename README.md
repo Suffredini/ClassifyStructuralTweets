@@ -17,7 +17,7 @@ Il progetto è stato svolto utilizzando:
 * **NetBeans** IDE con cui eseguire il progetto
 
 ## Eseguibili
-Sono presenti quattro eseguibili:
+Sono presenti cinque eseguibili:
 
 * **classifier/DownloadTweets** per l'estrazione dei tweet da poter poi classificare a mano
 * **classifier/BuildClassifier** Exp.1 - Cerca di gestire il dataset sbilanciato

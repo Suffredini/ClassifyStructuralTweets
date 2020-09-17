@@ -39,7 +39,7 @@ import weka.filters.unsupervised.attribute.StringToWordVector;
 
 public class BuildClassifier {
     /* START Parameter */
-    private static final String rowTweetsCSV = "file/tweets.csv";//"file/tweets200Pioggia.csv"; // Format: tweet;class
+    private static final String rowTweetsCSV = "file/tweets.csv";// Format: tweet;class
     private static final String stopWordFile = "file/stopWord";    
     
     private static int selectedClassifier = 0;  /*  (0) DecisionTree 
@@ -331,32 +331,32 @@ public class BuildClassifier {
         switch(selectedClassifier){
             case 0:                
                 classifierSelected = doDecisionTree();
-                classifierName = "DecisionTree(10CV)";
+                classifierName = "DecisionTree";
                 break;
                 
             case 1:                
                 classifierSelected = doSVM();
-                classifierName = "SVM(10CV)";
+                classifierName = "SVM";
                 break;
                 
             case 2:                
                 classifierSelected = doMultinomialNB();
-                classifierName = "MultinomialNB(10CV)";
+                classifierName = "MultinomialNB";
                 break;
                 
             case 3:                
                 classifierSelected = dokNN();
-                classifierName = "kNN(10CV)";
+                classifierName = "kNN";
                 break;
                 
             case 4:                
                 classifierSelected = doAdaboost();
-                classifierName = "Adaboost(10CV)";
+                classifierName = "Adaboost";
                 break;
                 
             case 5:                
                 classifierSelected = doRandomForest();
-                classifierName = "RandomForest(10CV)";
+                classifierName = "RandomForest";
                 break;
                 
             default:
@@ -586,7 +586,7 @@ public class BuildClassifier {
         System.out.println("Classifier with best F-Score: ");
         int bestFScoreClassifierIndex = getBestIndex(fscoreFold);
         printIndex(evalFold[bestFScoreClassifierIndex]);
-        exportClassifier(classifierFold[bestFScoreClassifierIndex], classifierName+"(Unbalanced)");
+        exportClassifier(classifierFold[bestFScoreClassifierIndex], classifierName+"(Exp.1)");
     }
     
 

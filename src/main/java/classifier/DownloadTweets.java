@@ -24,7 +24,7 @@ public class DownloadTweets {
         List<String[]> tweets;
         for(String k:keyWord){            
             key[0] = k;
-            tweets = TweetsImport.getTweets(key, "2000-01-01", "2020-03-01", "43.7118,10.4147,10000mi");
+            tweets = TweetsImport.getTweets(key, "2016-10-13", "2016-10-15", "43.5436,10.3170,23mi"); // Centro livorno, prendo Pisa e Cecina
             System.out.println("\n\n"+k+" ("+tweets.size()+")\n");
             for(String[] s : tweets){
                 System.out.println(s[0]);

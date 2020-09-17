@@ -10,7 +10,7 @@ La classificazione è binaria:
 
 Maggiori dettagli presenti nella cartella documentazione.
 
-## Tools
+## Strumenti
 Il progetto è stato svolto utilizzando:
 * **GetOldTweet Library** per l'estrazione dei tweet
 * **Weka** per la fase di pre-processing e classificazione

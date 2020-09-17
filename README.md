@@ -4,11 +4,24 @@ Progetto svolto per l'esame di Data Mining presso l'università di pisa, lo stes
 
 Per individuare tali eventi è stato addestrato un classificatore, sfruttando tecnivhe di text mining, sui tweets provenienti da specifiche zone e che rispettassero determinate parole chiave.
 
-Maggiorni dettagli presenti nella cartella documentazione
+La classificazione è binaria:
+* Strutturali
+* Non Strutturali
+
+Maggiori dettagli presenti nella cartella documentazione.
 
 ## Tools
-* Il progetto è stato svolto utilizzando:
-* GetOldTweet Library per l'estrazione dei tweet
-* Weka per la fase di pre-processing e classificazione
-* NetBeans IDE con cui eseguire il progetto
+Il progetto è stato svolto utilizzando:
+* **GetOldTweet Library** per l'estrazione dei tweet
+* **Weka** per la fase di pre-processing e classificazione
+* **NetBeans** IDE con cui eseguire il progetto
+
+## Eseguibili
+Sono presenti quattro eseguibili:
+
+* **classifier/DownloadTweets** per l'estrazione dei tweet da poter poi classificare a mano
+* **classifier/BuildClassifier** Exp.1 - Cerca di gestire il dataset sbilanciato
+* **classifier/BuildClassifierSameTweetsPerClassAndKeywords** Exp.2 - Associa egual numero di tweet strutturali e non per ogni parola
+* **classifier/BuildClassifierConstantNumberOfNSTweets** Exp.3 - Usa n tweets per parola dei non strutturali e tutte le parole degli strutturali
+* **classifierstructuraltweets/MainApp** Fa partire il tool che permette di scaricare e classificare nuovi tweet data una posizione, un range di date e selezionando il classificatore voluto
 
